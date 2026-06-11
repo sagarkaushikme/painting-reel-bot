@@ -195,9 +195,9 @@ def _create_segment(
 
     # ---- Text position ----
     if text_pos == "top":
-        text_y = "150"  # Not extreme top
+        text_y = "250"  # Not extreme top
     else:
-        text_y = "h-text_h-150"  # Not extreme bottom
+        text_y = "h-text_h-350"  # Moved up to avoid Instagram UI overlap
 
     # ---- Zoom expression ----
     # zoompan z parameter: starts at 1.0 and smoothly increases to target
@@ -268,8 +268,8 @@ def _create_segment(
         "-t", str(duration),
         "-pix_fmt", "yuv420p",  # Compatibility
         "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "23",
+        "-preset", "medium",  # Better quality encoding
+        "-crf", "18",  # Higher bitrate/quality (was 23)
         output_path,
     ]
 
