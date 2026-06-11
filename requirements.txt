@@ -1,0 +1,19 @@
+# Gemini AI SDK (new unified SDK — replaces deprecated google-generativeai)
+google-genai>=1.0.0
+
+# HTTP requests
+requests>=2.31.0
+
+# Image processing
+Pillow>=10.0.0
+
+# Environment variable loading
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=7.0.0
+
+# NOTE: FFmpeg must be installed on the system (not pip).
+# macOS:   brew install ffmpeg
+# Ubuntu:  sudo apt-get install ffmpeg
+# GitHub Actions: sudo apt-get install -y ffmpeg fonts-noto

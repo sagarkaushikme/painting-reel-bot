@@ -1,0 +1,49 @@
+name: Daily Painting Reel
+
+on:
+  schedule:
+    # 6:00 AM UTC = 11:30 AM IST — roz automatic chalega
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    # Manual trigger bhi possible — testing ke liye
+
+jobs:
+  post-reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install FFmpeg + Fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto fonts-noto-color-emoji
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run painting reel pipeline
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: python main.py
+
+      - name: Commit updates
+        run: |
+          git config --global user.name "Painting Reel Bot"
+          git config --global user.email "bot@example.com"
+          git add config/painting_blacklist.json music/
+          git diff --staged --quiet || \
+          git commit -m "Posted: $(date '+%Y-%m-%d')"
+          git push
