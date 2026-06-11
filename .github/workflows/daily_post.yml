@@ -2,8 +2,8 @@ name: Daily Painting Reel
 
 on:
   schedule:
-    # 15:30 UTC = 9:00 PM IST (Prime time for mystery/storytelling)
-    - cron: '30 15 * * *'
+    # 17:55 UTC = 11:25 PM IST (Test Run)
+    - cron: '55 17 * * *'
   workflow_dispatch:
     # Manual trigger bhi possible — testing ke liye
 
