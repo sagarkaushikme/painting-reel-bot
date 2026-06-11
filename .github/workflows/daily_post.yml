@@ -2,8 +2,8 @@ name: Daily Painting Reel
 
 on:
   schedule:
-    # 17:55 UTC = 11:25 PM IST (Test Run)
-    - cron: '55 17 * * *'
+    # 15:30 UTC = 9:00 PM IST (Roz Raat Ko)
+    - cron: '30 15 * * *'
   workflow_dispatch:
     # Manual trigger bhi possible — testing ke liye
 
