@@ -1,0 +1,40 @@
+page_id: "painting_explained"
+niche: "art_history"
+language: "hinglish"
+
+content_source_type: "museum_api"
+
+instagram:
+  access_token_env: "PAINTING_IG_TOKEN"
+  user_id_env: "PAINTING_IG_USER_ID"
+
+youtube:
+  enabled: true
+  channel_env: "PAINTING_YT_TOKEN"
+
+music_intensity_default: "medium"
+
+caption_hashtags:
+  - "#painting"
+  - "#art"
+  - "#arthistory"
+  - "#viral"
+  - "#facts"
+  - "#history"
+  - "#museum"
+  - "#artlovers"
+  - "#hindiart"
+  - "#paintings"
+  - "#artwork"
+  - "#masterpiece"
+  - "#fineart"
+  - "#classicart"
+  - "#artexplained"
+  - "#indianartlover"
+  - "#artfacts"
+  - "#paintingexplained"
+  - "#famouspainting"
+  - "#artreels"
+  - "#reels"
+  - "#explore"
+  - "#trending"

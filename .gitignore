@@ -33,10 +33,6 @@ Thumbs.db
 # Temp files (pipeline artifacts)
 /tmp/
 *.mp4
-*.jpg
-*.jpeg
-*.png
-!config/
 
 # Pytest
 .pytest_cache/
@@ -45,3 +41,13 @@ htmlcov/
 
 # Logs
 *.log
+
+# Keep config and asset directories tracked
+!config/
+!config/**
+!assets/
+!assets/**
+!sounds/
+!sounds/**
+!music/
+!music/**

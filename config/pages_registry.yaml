@@ -1,0 +1,6 @@
+pages:
+  - id: painting_explained
+    active: true
+    
+  - id: paisa_ka_gyaan
+    active: true

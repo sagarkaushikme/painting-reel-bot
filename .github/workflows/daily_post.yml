@@ -1,25 +1,60 @@
-name: Daily Painting Reel
+name: Daily Multi-Page Posting
 
 on:
   schedule:
     # 15:30 UTC = 9:00 PM IST (Roz Raat Ko)
     - cron: '30 15 * * *'
   workflow_dispatch:
-    # Manual trigger bhi possible — testing ke liye
+
+# ============================================================
+# HOW TO ADD A NEW PAGE:
+# 1. Create pages/<page_id>/ folder with config.yaml, prompts.py, content_source.py
+# 2. Add secrets for that page in GitHub repo settings
+# 3. Add the page to config/pages_registry.yaml with active: true
+# That's it — this workflow auto-discovers active pages!
+# ============================================================
 
 jobs:
-  post-reel:
+  # ---- Job 1: Read active pages from registry ----
+  load-pages:
+    runs-on: ubuntu-latest
+    outputs:
+      pages: ${{ steps.get-pages.outputs.pages }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse active pages from registry
+        id: get-pages
+        run: |
+          # Read pages_registry.yaml and extract active page IDs as JSON array
+          PAGES=$(python3 -c "
+          import yaml, json
+          with open('config/pages_registry.yaml') as f:
+              registry = yaml.safe_load(f)
+          active = [p['id'] for p in registry.get('pages', []) if p.get('active', False)]
+          print(json.dumps(active))
+          ")
+          echo "Active pages: $PAGES"
+          echo "pages=$PAGES" >> $GITHUB_OUTPUT
+
+  # ---- Job 2: Run pipeline for each active page (dynamic matrix) ----
+  post-page:
+    needs: load-pages
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+    strategy:
+      matrix:
+        page: ${{ fromJson(needs.load-pages.outputs.pages) }}
+      fail-fast: false   # one page failing doesn't block others
+      max-parallel: 3    # run up to 3 pages simultaneously
 
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -32,20 +67,26 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Run painting reel pipeline
+      - name: Run pipeline for ${{ matrix.page }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
-          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPO: ${{ github.repository }}
-        run: python main.py
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          # All page secrets available — each page's content_source.py
+          # reads only the env vars it needs via config.yaml
+          PAINTING_IG_TOKEN: ${{ secrets.PAINTING_IG_TOKEN }}
+          PAINTING_IG_USER_ID: ${{ secrets.PAINTING_IG_USER_ID }}
+          PAISA_IG_TOKEN: ${{ secrets.PAISA_IG_TOKEN }}
+          PAISA_IG_USER_ID: ${{ secrets.PAISA_IG_USER_ID }}
+          # Add new page secrets here as needed:
+          # NEWPAGE_IG_TOKEN: ${{ secrets.NEWPAGE_IG_TOKEN }}
+          # NEWPAGE_IG_USER_ID: ${{ secrets.NEWPAGE_IG_USER_ID }}
+        run: python main.py ${{ matrix.page }}
 
-      - name: Commit updates
+      - name: Commit blacklist updates
         run: |
-          git config --global user.name "Painting Reel Bot"
-          git config --global user.email "bot@example.com"
-          git add config/painting_blacklist.json music/
-          git diff --staged --quiet || \
-          git commit -m "Posted: $(date '+%Y-%m-%d')"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add config/blacklists/
+          git diff --staged --quiet || git commit -m "Posted via ${{ matrix.page }}: $(date '+%Y-%m-%d')"
           git push

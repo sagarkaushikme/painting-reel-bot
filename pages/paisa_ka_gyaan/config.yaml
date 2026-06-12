@@ -1,0 +1,33 @@
+page_id: "paisa_ka_gyaan"
+niche: "finance_diary"
+language: "hinglish"
+
+content_source_type: "ai_generated"
+
+instagram:
+  access_token_env: "PAISA_IG_TOKEN"
+  user_id_env: "PAISA_IG_USER_ID"
+
+youtube:
+  enabled: true
+  channel_env: "PAISA_YT_TOKEN"
+
+music_intensity_default: "low"
+
+visual_style: "diary_ledger"
+font_family: "Kalam-Regular.ttf"   # handwriting font
+background_texture: "old_paper"     # old paper texture background
+
+caption_hashtags:
+  - "#finance"
+  - "#money"
+  - "#paisa"
+  - "#financialliteracy"
+  - "#businessfacts"
+  - "#investing"
+  - "#moneytips"
+  - "#hinglish"
+  - "#fintech"
+  - "#reels"
+  - "#explore"
+  - "#trending"
