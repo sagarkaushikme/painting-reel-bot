@@ -79,18 +79,11 @@ def get_content(config: dict, max_retries: int = 5) -> tuple:
     for attempt in range(1, max_retries + 1):
         logger.info(f"🎲 Attempt {attempt}/{max_retries} — fetching painting...")
 
-        # Alternate between sources, with randomness
-        if random.random() < 0.5:
-            sources = [_fetch_from_met_museum, _fetch_from_rijksmuseum]
-        else:
-            sources = [_fetch_from_rijksmuseum, _fetch_from_met_museum]
+        # For now, only Rijksmuseum is implemented
+        sources = [_fetch_from_rijksmuseum]
 
         for source_fn in sources:
-            source_name = (
-                "Met Museum"
-                if "met" in source_fn.__name__
-                else "Rijksmuseum"
-            )
+            source_name = "Rijksmuseum"
             logger.info(f"🔍 Trying {source_name}...")
 
             image_path, metadata = source_fn()
