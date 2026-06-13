@@ -79,11 +79,11 @@ def get_content(config: dict, max_retries: int = 5) -> tuple:
     for attempt in range(1, max_retries + 1):
         logger.info(f"🎲 Attempt {attempt}/{max_retries} — fetching painting...")
 
-        # For now, only Rijksmuseum is implemented
-        sources = [_fetch_from_rijksmuseum]
+        # For now, only Chicago Art Institute is implemented
+        sources = [_fetch_from_artic]
 
         for source_fn in sources:
-            source_name = "Rijksmuseum"
+            source_name = "Chicago Art Institute"
             logger.info(f"🔍 Trying {source_name}...")
 
             image_path, metadata = source_fn()
@@ -100,244 +100,64 @@ def get_content(config: dict, max_retries: int = 5) -> tuple:
 
 
 # ============================================================
-# SOURCE A: RIJKSMUSEUM (New Linked Data API)
+# SOURCE: CHICAGO ART INSTITUTE API
 # ============================================================
 
-
-def _fetch_from_rijksmuseum() -> tuple:
+def _fetch_from_artic() -> tuple:
     """
-    Fetch a random painting from Rijksmuseum.
+    Fetch a random famous painting from the Art Institute of Chicago.
     Returns: (image_path, metadata) or (None, None) on failure.
     """
     try:
-        # Step 1: Search for paintings with images
-        search_url = "https://data.rijksmuseum.nl/search/collection"
+        # We query for 'painting' and randomize the page to get different results
+        page = random.randint(1, 100)
+        search_url = "https://api.artic.edu/api/v1/artworks/search"
         params = {
-            "type": "painting",
-            "imageAvailable": "true",
-            "material": "canvas",  # Oil on canvas — more likely to be famous
+            "q": "painting",
+            "limit": 10,
+            "page": page,
+            "fields": "id,title,artist_display,date_display,image_id"
         }
 
-        # Randomly paginate to get different paintings each time
         resp = requests.get(search_url, params=params, timeout=30)
         resp.raise_for_status()
         data = resp.json()
 
-        # Get items from current page
-        items = data.get("orderedItems", [])
+        items = data.get("data", [])
         if not items:
-            logger.warning("Rijksmuseum: No items in search results")
+            logger.warning("Chicago Art Institute: No items found")
             return None, None
 
-        # If there's a next page, randomly decide to go deeper (up to 5 pages)
-        current_data = data
-        max_pages = random.randint(1, 5)
-        for _ in range(max_pages):
-            next_page = current_data.get("next", {})
-            next_url = next_page.get("id") if isinstance(next_page, dict) else None
-            if not next_url:
-                break
-            try:
-                resp = requests.get(next_url, timeout=30)
-                resp.raise_for_status()
-                current_data = resp.json()
-                new_items = current_data.get("orderedItems", [])
-                if new_items:
-                    items = new_items  # Use the later page's items
-            except Exception:
-                break
-
-        # Step 2: Pick a random item and resolve its LOD identifier
         random.shuffle(items)
 
-        for item in items[:10]:  # Try up to 10 items
-            lod_id = item.get("id", "")
-            if not lod_id:
+        for item in items:
+            image_id = item.get("image_id")
+            if not image_id:
                 continue
 
-            # Extract numeric ID for blacklist tracking
-            object_id = f"rijks_{lod_id.split('/')[-1]}"
+            object_id = f"artic_{item.get('id')}"
             if is_already_posted(object_id):
                 logger.info(f"⏭️ Skipping already posted: {object_id}")
                 continue
 
-            # Resolve the LOD identifier to get metadata
-            metadata = _resolve_rijksmuseum_id(lod_id)
-            if not metadata:
-                continue
-
-            # Step 3: Download the image
-            image_url = metadata.get("image_url")
-            if not image_url:
-                continue
-
+            # Construct IIIF image URL
+            # 843, is the default max width allowed for free downloads without a token
+            image_url = f"https://www.artic.edu/iiif/2/{image_id}/full/843,/0/default.jpg"
             image_path = f"/tmp/painting_{object_id}.jpg"
+
             if download_image(image_url, image_path):
-                metadata["object_id"] = object_id
-                metadata["source"] = "rijksmuseum"
+                metadata = {
+                    "object_id": object_id,
+                    "title": item.get("title", "Unknown"),
+                    "artist": item.get("artist_display", "Unknown").split("\\n")[0].strip(),
+                    "year": item.get("date_display", "Unknown"),
+                    "source": "chicago_art_institute"
+                }
                 return image_path, metadata
 
-        logger.warning("Rijksmuseum: Could not find suitable painting")
+        logger.warning("Chicago Art Institute: Could not find suitable painting with image")
         return None, None
 
     except Exception as e:
-        logger.error(f"Rijksmuseum fetch error: {e}")
+        logger.error(f"Chicago Art Institute fetch error: {e}")
         return None, None
-
-
-def _resolve_rijksmuseum_id(lod_id: str) -> dict:
-    """
-    Resolve a Rijksmuseum LOD identifier to get metadata and image URL.
-    Uses content negotiation to request JSON-LD.
-    """
-    try:
-        # Request JSON-LD representation
-        headers = {
-            "Accept": "application/ld+json",
-        }
-        resp = requests.get(lod_id, headers=headers, timeout=30, allow_redirects=True)
-
-        if resp.status_code != 200:
-            # Try with query parameter approach
-            if "?" in lod_id:
-                resolve_url = f"{lod_id}&format=jsonld"
-            else:
-                resolve_url = f"{lod_id}?format=jsonld"
-            resp = requests.get(resolve_url, timeout=30, allow_redirects=True)
-
-        if resp.status_code != 200:
-            return None
-
-        data = resp.json()
-
-        # Parse JSON-LD to extract metadata
-        if isinstance(data, list):
-            data = data[0] if data else {}
-
-        # Extract title
-        title = "Unknown"
-        if "_label" in data:
-            title = data["_label"]
-        elif "label" in data:
-            label = data["label"]
-            if isinstance(label, dict):
-                title = label.get("en", [label.get("nl", ["Unknown"])])[0]
-                if isinstance(title, dict):
-                    title = title.get("@value", "Unknown")
-            elif isinstance(label, str):
-                title = label
-
-        # Extract artist/creator
-        artist = "Unknown Artist"
-        for key in ["produced_by", "created_by", "carried_out_by"]:
-            if key in data:
-                prod = data[key]
-                if isinstance(prod, dict):
-                    carried = prod.get("carried_out_by", [])
-                    if isinstance(carried, list) and carried:
-                        actor = carried[0]
-                        artist = actor.get("_label", artist)
-                    elif isinstance(carried, dict):
-                        artist = carried.get("_label", artist)
-
-        # Extract year
-        year = "Unknown"
-        timespan = data.get("produced_by", {}).get("timespan", {})
-        if isinstance(timespan, dict):
-            begin = timespan.get("begin_of_the_begin", "")
-            if begin:
-                year = begin[:4]
-
-        # Extract image URL — look for IIIF representation
-        image_url = None
-
-        for key in ["representation", "digitally_shown_by", "subject_of"]:
-            representations = data.get(key, [])
-            if isinstance(representations, dict):
-                representations = [representations]
-            if isinstance(representations, list):
-                for rep in representations:
-                    rep_id = rep.get("id", "")
-                    if "iiif" in rep_id.lower() or "micr.io" in rep_id.lower():
-                        image_url = _extract_iiif_image(rep_id)
-                        if image_url:
-                            break
-                    elif rep_id.endswith((".jpg", ".jpeg", ".png")):
-                        image_url = rep_id
-                        break
-
-        # Fallback: construct IIIF URL from the LOD ID
-        if not image_url:
-            numeric_id = lod_id.rstrip("/").split("/")[-1]
-            iiif_attempts = [
-                f"https://iiif.micr.io/{numeric_id}/full/max/0/default.jpg",
-                f"https://lh3.googleusercontent.com/proxy/{numeric_id}",
-            ]
-            for attempt_url in iiif_attempts:
-                try:
-                    head_resp = requests.head(attempt_url, timeout=10)
-                    if head_resp.status_code == 200:
-                        image_url = attempt_url
-                        break
-                except Exception:
-                    continue
-
-        if not image_url:
-            return None
-
-        return {
-            "title": title,
-            "artist": artist,
-            "year": year,
-            "image_url": image_url,
-        }
-
-    except Exception as e:
-        logger.debug(f"Rijksmuseum resolve error for {lod_id}: {e}")
-        return None
-
-
-def _extract_iiif_image(manifest_url: str) -> str:
-    """
-    Extract a downloadable image URL from a IIIF manifest.
-    """
-    try:
-        resp = requests.get(manifest_url, timeout=15)
-        if resp.status_code != 200:
-            return None
-
-        data = resp.json()
-
-        # IIIF Presentation API v3
-        canvases = data.get("items", [])
-        if not canvases and "sequences" in data:
-            # IIIF v2
-            sequences = data.get("sequences", [])
-            if sequences:
-                canvases = sequences[0].get("canvases", [])
-
-        for canvas in canvases:
-            items = canvas.get("items", canvas.get("images", []))
-            if isinstance(items, list):
-                for item in items:
-                    body = item.get("body", item.get("resource", {}))
-                    if isinstance(body, dict):
-                        img_id = body.get("id", body.get("@id", ""))
-                        if img_id:
-                            if "/info.json" in img_id:
-                                return img_id.replace(
-                                    "/info.json", "/full/max/0/default.jpg"
-                                )
-                            return img_id
-                    # Nested annotation pages (IIIF v3)
-                    sub_items = item.get("items", [])
-                    for sub in sub_items:
-                        body = sub.get("body", {})
-                        if isinstance(body, dict):
-                            img_id = body.get("id", "")
-                            if img_id:
-                                return img_id
-
-        return None
-    except Exception:
-        return None
