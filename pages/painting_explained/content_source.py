@@ -239,9 +239,9 @@ def _fetch_from_met() -> tuple:
             artist = detail.get("artistDisplayName", "Unknown Artist")
             year = detail.get("objectDate", "Unknown")
 
-            # Download the image (relax min_width to 400 as Met images vary)
+            # Download - no width check since paintings can be portrait orientation
             image_path = f"/tmp/painting_{object_id}.jpg"
-            if download_image(img_url, image_path, min_size_kb=50, min_width=400):
+            if download_image(img_url, image_path, min_size_kb=100, min_width=0):
                 metadata = {
                     "object_id": object_id,
                     "title": title,
