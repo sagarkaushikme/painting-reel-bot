@@ -2,8 +2,8 @@ name: Daily Multi-Page Posting
 
 on:
   schedule:
-    # 18:45 UTC = 12:15 AM IST
-    - cron: '45 18 * * *'
+    # 13:30 UTC = 7:00 PM IST (Roz Shaam Ko)
+    - cron: '30 13 * * *'
   workflow_dispatch:
 
 # ============================================================
