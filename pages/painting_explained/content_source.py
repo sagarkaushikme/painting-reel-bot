@@ -145,7 +145,8 @@ def _fetch_from_artic() -> tuple:
             image_url = f"https://www.artic.edu/iiif/2/{image_id}/full/843,/0/default.jpg"
             image_path = f"/tmp/painting_{object_id}.jpg"
 
-            if download_image(image_url, image_path):
+            # Set min_size_kb=0 because Chicago API images are highly compressed JPEGs (often 5-50KB) but still 843px width
+            if download_image(image_url, image_path, min_size_kb=0):
                 metadata = {
                     "object_id": object_id,
                     "title": item.get("title", "Unknown"),
